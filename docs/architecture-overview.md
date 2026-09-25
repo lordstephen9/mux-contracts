@@ -199,6 +199,7 @@ Rules:
 
 ## Related Documents
 
+- [dependency_graph.md](dependency_graph.md) — runtime contract-call edges and invariants.
 - [SECURITY.md](../SECURITY.md) — security policy, scope, and reporting.
 - [docs/threat-model.md](threat-model.md) — trust boundaries and mitigations.
 - [docs/access-control-checklist.md](access-control-checklist.md) — access

@@ -94,6 +94,9 @@ The CI pipeline ([`.github/workflows/bindings.yml`](.github/workflows/bindings.y
 
 See [`examples/bindings-usage.ts`](examples/bindings-usage.ts) for a working end-to-end example showing `check_spend` and `register_wallet`.
 See [`examples/wallet-registry-invoke.ts`](examples/wallet-registry-invoke.ts) for a dedicated wallet registry invoke script.
+See [`examples/authorize-flow.ts`](examples/authorize-flow.ts) for the owner → scoped session key → optional relayer → revocation authorization flow. The flow requires explicit environment variables and verifies that a revoked key is rejected.
+
+The runtime call relationships between contracts are documented in [`docs/dependency_graph.md`](docs/dependency_graph.md); the address key set is maintained in [`CONTRACT_IDS.md`](CONTRACT_IDS.md) and [`config/addresses.json`](config/addresses.json).
 
 ```ts
 import {

@@ -75,3 +75,13 @@ jobs:
 
       - name: Run tests
         run: cargo test --workspace
+      - name: Enforce Clippy warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Validate contract IDs and dependency documentation
+        run: |
+          bash scripts/check-contract-ids-sync.sh \
+            --types bindings/src/types.ts \
+            --addresses config/addresses.json \
+            --root-doc CONTRACT_IDS.md \
+            --detail-doc docs/contract-ids.md
+          bash scripts/check-dependency-graph.sh
