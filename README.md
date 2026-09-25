@@ -26,6 +26,38 @@ See [`docs/aa_sequence_diagram.md`](docs/aa_sequence_diagram.md) for the authori
 | [`contracts/mux-spending-policy`](contracts/mux-spending-policy/) | Per-account/per-asset spend-limit policy and validation |
 | [`contracts/mux-wallet-registry`](contracts/mux-wallet-registry/) | Named wallet address registry — register and look up wallet addresses by symbolic name |
 
+## Registry vs Wallet-Registry Split
+
+Mux ships **two distinct registries**. They are not interchangeable and must not be conflated — each has a different trust model, ownership, and set of invariants. See [`docs/registry-contracts-comparison.md`](docs/registry-contracts-comparison.md) for the full comparison.
+
+| | `mux-registry` | `mux-wallet-registry` |
+|---|---|---|
+| **Purpose** | Contract version/metadata registry | Named wallet address registry |
+| **Keyed by** | Deployed crate name | Symbolic wallet name |
+| **Value** | Version + metadata | Wallet address |
+| **Ownership** | Registry admin (owner) | Per-owner namespace |
+| **Authz** | Owner/admin only for writes | Owner (or authorized delegate) for writes; reads are public |
+| **Money path** | No — informational only | No — address lookup only; never authorizes spends |
+| **Source of truth** | Contract metadata | Wallet address mapping |
+
+### Invariants
+
+- **`mux-registry`** is the single source of truth for *which contract version is deployed under a given crate name*. Writes are restricted to the registry owner/admin; clients cannot self-register versions. Reads are public and side-effect free.
+- **`mux-wallet-registry`** maps a symbolic name to a wallet address **within an owner's namespace**. Writes require the owner (or an explicitly authorized delegate); a name cannot be silently reassigned by a non-owner. Reads are public.
+- **Neither registry authorizes spends, recovery, or admin actions.** Spend authorization lives in `mux-spending-policy` / `mux-account`; recovery lives in `mux-recovery`. A registry entry is a lookup, never a capability.
+- **Fail-closed:** unknown names/crates return a not-found error rather than a default address or version. Callers must treat a missing entry as a hard failure, not a fallback.
+
+### Authz boundaries
+
+| Surface | Owner | Delegate | Guardian | API-key / JWT |
+|---|---|---|---|---|
+| `mux-registry` write | ✅ | ❌ | ❌ | ❌ |
+| `mux-registry` read | ✅ | ✅ | ✅ | ✅ |
+| `mux-wallet-registry` write | ✅ | ✅ (if granted) | ❌ | ❌ |
+| `mux-wallet-registry` read | ✅ | ✅ | ✅ | ✅ |
+
+Clients cannot bypass policy: privileged writes are deny-by-default and require the owner (or an explicitly granted delegate for the wallet registry). API-key/JWT callers are read-only against both registries.
+
 ## WASM Size Budget & CI Artifacts
 
 The CI pipeline ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) builds every contract to `wasm32-unknown-unknown` and enforces a **fail-closed WASM size budget**: if any compiled contract exceeds the configured limit, the build fails and the PR cannot merge.
@@ -245,4 +277,26 @@ async function handleContractCall(req, res) {
 - **400 Bad Request** — Invalid input, validation failures, constraint violations
 - **409 Conflict** — `AlreadyInitial
 
-/* … truncated 1207 chars — edit only what you need near the top … */
+## Local Soroban Development
+
+### Using Docker Compose
+
+[`docker-compose.yml`](docker-compose.yml) starts the official `stellar/quickstart` image with Soroban RPC and Horizon for local development.
+
+```bash
+docker compose up -d
+```
+
+This exposes:
+- Soroban RPC on `http://localhost:8000`
+- Horizon on `http://localhost:8001`
+
+Stop the stack with `docker compose down`.
+
+## Security
+
+See [`SECURITY.md`](SECURITY.md) for the threat model, secret-handling rules, and the registry authz boundaries summarized above. The registry split (version/metadata vs named wallet addresses) is documented in [`docs/registry-contracts-comparison.md`](docs/registry-contracts-comparison.md); keep both in sync when either registry changes.
+
+## License
+
+Apache-2.0
